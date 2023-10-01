@@ -1,24 +1,38 @@
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  updateProfile,
+} from "firebase/auth";
 import auth from "../../firebase/firebase.config";
 import { useState } from "react";
 import { AiFillEyeInvisible, AiFillEye } from "react-icons/ai";
+import { useRef } from "react";
 
 const Hero = () => {
   const [registerError, setRegisterError] = useState("");
   const [success, setSuccess] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const emailRef = useRef(null);
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const name = e.target.name.value;
     const email = e.target.email.value;
     const password = e.target.password.value;
-    console.log(email, password);
+    const accepted = e.target.terms.checked;
+    console.log(name, email, password, accepted);
     setRegisterError("");
     setSuccess("");
+
     if (password.length < 6) {
       setRegisterError(" Password should be at least 6 characters");
       return;
     } else if (!/[A-Z]/.test(password)) {
       setRegisterError("your password should have at least one upper case ");
+      return;
+    } else if (!accepted) {
+      setRegisterError("please accepted terms & conditions ");
       return;
     }
 
@@ -26,10 +40,40 @@ const Hero = () => {
       .then((result) => {
         console.log(result.user);
         setSuccess("Yor register successfully");
+        updateProfile(result.user, {
+          displayName: name,
+          photoURL: "photo url",
+        })
+          .then(() => console.log("profile update"))
+          .catch();
+
+        sendEmailVerification(result.user).then(() => {
+          alert("please checked you email");
+        });
       })
       .catch((error) => {
         console.log(error);
         setRegisterError(error.message);
+      });
+  };
+  const handleForget = () => {
+    const email = emailRef.current.value;
+    if (!email) {
+      console.log("handle forget", emailRef.current.value);
+      return;
+    } else if (
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)
+    ) {
+      console.log("please input right email");
+      return;
+    }
+
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        alert("please chek your email");
+      })
+      .catch((error) => {
+        console.log(error);
       });
   };
   return (
@@ -48,16 +92,30 @@ const Hero = () => {
             <form onSubmit={handleSubmit}>
               <div className="form-control">
                 <label className="label">
+                  <span className="label-text">Your Name</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="your name"
+                  className="input input-bordered"
+                  required
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
                   <span className="label-text">Email</span>
                 </label>
                 <input
                   type="email"
                   name="email"
+                  ref={emailRef}
                   placeholder="email"
                   className="input input-bordered"
                   required
                 />
               </div>
+
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Password</span>
@@ -81,9 +139,18 @@ const Hero = () => {
                   </span>
                 </div>
                 <label className="label">
-                  <a href="#" className="label-text-alt link link-hover">
+                  <a
+                    onClick={handleForget}
+                    href="#"
+                    className="label-text-alt link link-hover">
                     Forgot password?
                   </a>
+                </label>
+              </div>
+              <div className="mb-2">
+                <input type="checkbox" name="terms" id="terms" />
+                <label htmlFor="terms">
+                  Accept our <a href="">Terms and conditions</a>
                 </label>
               </div>
               <div className="form-control mt-6">
